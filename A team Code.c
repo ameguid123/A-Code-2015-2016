@@ -95,7 +95,7 @@ float rpmAvgL = 0;
 float rpmAvgR = 0;
 float dT; //delta T in seconds
 float outL, outR;
-float sp = 500;
+float sp = 1480;
 bool set = false;
 
 task usercontrol()
@@ -111,10 +111,12 @@ task usercontrol()
 //		pidInit(flywheelR, 0.025, 0.020, 0.00, 0, 50);	//OLD FAIRLY GOOD
 //		pidInit(flywheelL, .03, 0.02, 0.003, 0, 50);	//NEW BEST
 //		pidInit(flywheelR, .03, 0.02, 0.003, 0, 50);	//NEW BEST
-//		pidInit(flywheelL, 0.4, 0.04, 0.003, 0, 50);	//NEW NEW BEST
-//		pidInit(flywheelR, 0.4, 0.04, 0.003, 0, 50);	//NEW NEW BEST
-			pidInit(flywheelL, 0.4, 0.04, 0.002, 0, 50);	//NEW NEW NEW BEST
-			pidInit(flywheelR, 0.4, 0.04, 0.002, 0, 50);	//NEW NEW NEW BEST
+		pidInit(flywheelL, 0.4, 0.04, 0.003, 0, 50);	//NEW NEW BEST
+		pidInit(flywheelR, 0.4, 0.04, 0.003, 0, 50);	//NEW NEW BEST
+//			pidInit(flywheelL, 0.5, 0.04, 0.003, 0, 50);	//NEW NEW NEW BEST
+//			pidInit(flywheelR, 0.5, 0.04, 0.003, 0, 50);	//NEW NEW NEW BEST
+//		pidInit(flywheelL, 0.5, 0.05, 0.003, 0, 50);	//NEW NEW NEW BEST
+//		pidInit(flywheelR, 0.5, 0.05, 0.003, 0, 50);
 		unsigned long lastTime = nPgmTime;
 		resetMotorEncoder(flywheelLeft1);
 		resetMotorEncoder(flywheelRight1);
@@ -190,22 +192,22 @@ task usercontrol()
 			SensorValue(flywheelLED) = 0;
 		}
 
-		if(runFlywheel)
+/*		if(runFlywheel)
 		{
 			sp = 1180;
 		}
 		else
 		{
 			sp = 1480;
-		}
+		}*/
 
-		if(flywheelL.errorSum > 20500) // OLD: 20500
+		if(flywheelL.errorSum > 18000) // OLD: 20500
 		{
-			flywheelL.errorSum = 20500;
+			flywheelL.errorSum = 18000;
 		}
-		if(flywheelR.errorSum > 20500)
+		if(flywheelR.errorSum > 18000)
 		{
-			flywheelR.errorSum = 20500;
+			flywheelR.errorSum = 18000;
 		}
 
 		if(rpmAvgR >= sp && rpmAvgL >= sp && !set)
