@@ -6,7 +6,7 @@
 #pragma config(Motor,  port3,           flywheelLeft1, tmotorVex393TurboSpeed_MC29, openLoop, reversed, encoderPort, dgtl1)
 #pragma config(Motor,  port4,           flywheelLeft2, tmotorVex393TurboSpeed_MC29, openLoop, reversed, encoderPort, dgtl1)
 #pragma config(Motor,  port5,           rampLeft,      tmotorVex393_MC29, openLoop)
-#pragma config(Motor,  port6,           rampRight,     tmotorVex393_MC29, openLoop)
+#pragma config(Motor,  port6,           rampRight,     tmotorVex393_MC29, openLoop, reversed)
 #pragma config(Motor,  port7,           flywheelRight1, tmotorVex393TurboSpeed_MC29, openLoop, encoderPort, dgtl3)
 #pragma config(Motor,  port8,           flywheelRight2, tmotorVex393TurboSpeed_MC29, openLoop, encoderPort, dgtl3)
 #pragma config(Motor,  port9,           driveTrainRight, tmotorVex393_MC29, openLoop, reversed)
@@ -51,29 +51,13 @@ void pre_auton()
 	// Example: clearing encoders, setting servo positions, ...
 }
 
+
+
 /////////////////////////////////////////////////////////////////////////////////////////
 //
 //                                 Autonomous Task
 //
 // This task is used to control your robot during the autonomous phase of a VEX Competition.
-// You must modify the code to add your own robot specific commands here.
-//
-/////////////////////////////////////////////////////////////////////////////////////////
-
-task autonomous()
-{
-  // .....................................................................................
-  // Insert user code here.
-  // .....................................................................................
-
-	AutonomousCodePlaceholderForTesting();  // Remove this function call once you have "real" code.
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////
-//
-//                                 User Control Task
-//
-// This task is used to control your robot during the user control phase of a VEX Competition.
 // You must modify the code to add your own robot specific commands here.
 //
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -95,12 +79,152 @@ float rpmAvgL = 0;
 float rpmAvgR = 0;
 float dT; //delta T in seconds
 float outL, outR;
-float sp = 1480;
+float sp = 1575;
 bool set = false;
+
+
+task autonomous()
+{
+	int firstBall = 0;
+		pidInit(flywheelL, 0.4, 0.04, 0.003, 0, 50);	//NEW NEW BEST
+		pidInit(flywheelR, 0.4, 0.04, 0.003, 0, 50);	//NEW NEW BEST
+			unsigned long lastTime = nPgmTime;
+		resetMotorEncoder(flywheelLeft1);
+		resetMotorEncoder(flywheelRight1);
+		bool runFlywheel = false;
+		bool btn8DPressed = false;
+		float rpmL, lastRpmL1, lastRpmL2, lastRpmL3, lastRpmL4;
+		float rpmR, lastRpmR1, lastRpmR2, lastRpmR3, lastRpmR4;
+		int counter = 0;
+
+
+	while(1==1)
+	{
+
+		dT = (float)(nPgmTime - lastTime)/1000;
+			lastTime = nPgmTime;
+
+		/*	if(vexRT(Btn8D) && !btn8DPressed) //check if this = first time button = pressed
+			{
+				btn8DPressed = true;
+				runFlywheel = !runFlywheel;
+
+			}
+			else if(!vexRT(Btn8D) && btn8DPressed)
+			{
+				btn8DPressed = false;
+			}*/
+
+			if(dT != 0) //*7 BECAUSE EXTERNAL RATIO = 1:7. Internal handled by / dT
+			{
+				rpmL = 60.00*7*(((float)getMotorEncoder(flywheelLeft1))/dT)/360; //360 w/ optical shaft encoder //261.3333 = for turbo gearing, 261.3333 ticks per rev in turbo gear
+				rpmR = 60.00*7*(((float)getMotorEncoder(flywheelRight1))/dT)/360;
+			}
+			else
+			{
+				rpmL = 0;
+				rpmR = 0;
+			}
+			resetMotorEncoder(flywheelLeft1);
+			resetMotorEncoder(flywheelRight1);
+
+			lastRpmL4 = lastRpmL3;
+			lastRpmL3 = lastRpmL2;
+			lastRpmL2 = lastRpmL1;
+			lastRpmL1 = rpmL;
+
+			lastRpmR4 = lastRpmR3;
+			lastRpmR3 = lastRpmR2;
+			lastRpmR2 = lastRpmR1;
+			lastRpmR1 = rpmR;
+
+			rpmAvgL = (rpmL + lastRpmL1 + lastRpmL2 + lastRpmL3 + lastRpmL4)/5;
+			rpmAvgR = (rpmR + lastRpmR1 + lastRpmR2 + lastRpmR3 + lastRpmR4)/5;
+
+			if(rpmAvgR >= sp-75 && rpmR <= sp+75 && rpmAvgL >= sp-75 && rpmL< sp+75)
+			{
+				counter++;
+			}
+			if(counter >= 3)
+			{
+				SensorValue(flywheelLED) = 1;
+			}
+			if(rpmAvgR < sp-150 || rpmR > sp+150 || rpmAvgL < sp-150 || rpmL > sp+150)
+			{
+				counter = 0;
+				SensorValue(flywheelLED) = 0;
+			}
+
+	/*		if(runFlywheel)
+			{
+				sp = 1180;
+			}
+			else
+			{
+				sp = 1480;
+			}*/
+
+			if(flywheelL.errorSum > 18000) // OLD: 20500
+			{
+				flywheelL.errorSum = 18000;
+			}
+			if(flywheelR.errorSum > 18000)
+			{
+				flywheelR.errorSum = 18000;
+			}
+
+			if(rpmAvgR >= sp && rpmAvgL >= sp && !set)
+			{
+				//flywheelL.errorSum = 0;
+				//flywheelR.errorSum = 0;
+				set = true;
+			}
+			if(rpmAvgR <= sp-700 && rpmAvgL <= sp-700)
+			{
+				set = false;
+			}
+
+			outL = pidExecute(flywheelL, sp-rpmAvgL);
+			outR = pidExecute(flywheelR, sp-rpmAvgR);
+
+			if(outL < 1)
+			{
+				outL = 1;
+			}
+			driveFlywheelLeft(outL);
+
+			if(outR < 1)
+			{
+				outR = 1;
+			}
+			driveFlywheelRight(outR);
+
+			if(firstBall == 0)
+			{
+				wait1Msec(500);
+				motor[waterwheel] = 127;
+				motor[shooterConveyor] = 127;
+				firstBall = 1;
+			}
+
+		}
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////
+//
+//                                 User Control Task
+//
+// This task is used to control your robot during the user control phase of a VEX Competition.
+// You must modify the code to add your own robot specific commands here.
+//
+/////////////////////////////////////////////////////////////////////////////////////////
 
 task usercontrol()
 {
-
+	pidReset(flywheelL);
+	pidReset(flywheelR);
+	debugStreamClear;
+float sp = 1480; // old 1480
 //INCREASE/DECREASE TARGET RPM (SP) WITH AN INCREMENT DECREMENT
 
 
@@ -111,12 +235,33 @@ task usercontrol()
 //		pidInit(flywheelR, 0.025, 0.020, 0.00, 0, 50);	//OLD FAIRLY GOOD
 //		pidInit(flywheelL, .03, 0.02, 0.003, 0, 50);	//NEW BEST
 //		pidInit(flywheelR, .03, 0.02, 0.003, 0, 50);	//NEW BEST
-		pidInit(flywheelL, 0.4, 0.04, 0.003, 0, 50);	//NEW NEW BEST
-		pidInit(flywheelR, 0.4, 0.04, 0.003, 0, 50);	//NEW NEW BEST
-//			pidInit(flywheelL, 0.5, 0.04, 0.003, 0, 50);	//NEW NEW NEW BEST
-//			pidInit(flywheelR, 0.5, 0.04, 0.003, 0, 50);	//NEW NEW NEW BEST
-//		pidInit(flywheelL, 0.5, 0.05, 0.003, 0, 50);	//NEW NEW NEW BEST
-//		pidInit(flywheelR, 0.5, 0.05, 0.003, 0, 50);
+//		pidInit(flywheelL, 0.4, 0.04, 0.003, 0, 50);	//NEW NEW BEST   COMPETITION CODE
+//		pidInit(flywheelR, 0.4, 0.04, 0.003, 0, 50);	//NEW NEW BEST
+
+//		pidInit(flywheelL, 0.5, 0.05, -0.001,0, 50);	//NEW NEW BEST
+//		pidInit(flywheelR, 0.5, 0.05, -0.001, 0, 50);	//NEW NEW BEST
+
+
+
+
+//NEW PID LOOP TUNING
+//pidInit(flywheelL, 2.9, 0.00001, 0.0515, 3, 50);	//NEW NEW BEST
+	//	pidInit(flywheelR, 2.9, 0.00001, 0.0515, 3, 50);	//NEW NEW BEST
+
+
+
+//BESTEST
+//			pidInit(flywheelL, 0.3, 0.0000, 0.00007, 3, 50);	//NEW NEW BEST
+//		pidInit(flywheelR, 0.3, 0.0000, 0.00007, 3, 50);	//NEW NEW BEST
+
+
+
+//SUPER DUPER BESTEST *** CONGRATS *** YOU DID GREAT*** I'M SO PROUD OF YOU ***
+		pidInit(flywheelL, 0.3, 0.1, 0.00007, 3, 50);	//NEW NEW BEST
+		pidInit(flywheelR, 0.3, 0.1, 0.00007, 3, 50);	//NEW NEW BEST
+
+
+
 		unsigned long lastTime = nPgmTime;
 		resetMotorEncoder(flywheelLeft1);
 		resetMotorEncoder(flywheelRight1);
@@ -135,116 +280,150 @@ task usercontrol()
 
 	while (true)
 	{
-		int port3Drive = port3;
 		//Flywheel PID work:
 
-		dT = (float)(nPgmTime - lastTime)/1000;
-		lastTime = nPgmTime;
 
-		if(vexRT(Btn8D) && !btn8DPressed) //check if this = first time button = pressed
+		if(vexRT(Btn8D) == 1)
 		{
 			btn8DPressed = true;
-			runFlywheel = !runFlywheel;
+		}
+		if(btn8DPressed == true)
+		{
 
-		}
-		else if(!vexRT(Btn8D) && btn8DPressed)
-		{
-			btn8DPressed = false;
-		}
+			dT = (float)(nPgmTime - lastTime)/1000;
+			lastTime = nPgmTime;
 
-		if(dT != 0) //*7 BECAUSE EXTERNAL RATIO = 1:7. Internal handled by / dT
-		{
-			rpmL = 60.00*7*(((float)getMotorEncoder(flywheelLeft1))/dT)/360; //360 w/ optical shaft encoder //261.3333 = for turbo gearing, 261.3333 ticks per rev in turbo gear
-			rpmR = 60.00*7*(((float)getMotorEncoder(flywheelRight1))/dT)/360;
-		}
-		else
-		{
-			rpmL = 0;
-			rpmR = 0;
-		}
-		resetMotorEncoder(flywheelLeft1);
-		resetMotorEncoder(flywheelRight1);
+		/*	if(vexRT(Btn8D) && !btn8DPressed) //check if this = first time button = pressed
+			{
+				btn8DPressed = true;
+				runFlywheel = !runFlywheel;
 
-		lastRpmL4 = lastRpmL3;
-		lastRpmL3 = lastRpmL2;
-		lastRpmL2 = lastRpmL1;
-		lastRpmL1 = rpmL;
+			}
+			else if(!vexRT(Btn8D) && btn8DPressed)
+			{
+				btn8DPressed = false;
+			}*/
 
-		lastRpmR4 = lastRpmR3;
-		lastRpmR3 = lastRpmR2;
-		lastRpmR2 = lastRpmR1;
-		lastRpmR1 = rpmR;
+			if(dT != 0) //*7 BECAUSE EXTERNAL RATIO = 1:7. Internal handled by / dT
+			{
+				rpmL = 60.00*7*(((float)getMotorEncoder(flywheelLeft1))/dT)/360; //360 w/ optical shaft encoder //261.3333 = for turbo gearing, 261.3333 ticks per rev in turbo gear
+				rpmR = 60.00*7*(((float)getMotorEncoder(flywheelRight1))/dT)/360;
+			}
+			else
+			{
+				rpmL = 0;
+				rpmR = 0;
+			}
+			resetMotorEncoder(flywheelLeft1);
+			resetMotorEncoder(flywheelRight1);
 
-		rpmAvgL = (rpmL + lastRpmL1 + lastRpmL2 + lastRpmL3 + lastRpmL4)/5;
-		rpmAvgR = (rpmR + lastRpmR1 + lastRpmR2 + lastRpmR3 + lastRpmR4)/5;
+			lastRpmL4 = lastRpmL3;
+			lastRpmL3 = lastRpmL2;
+			lastRpmL2 = lastRpmL1;
+			lastRpmL1 = rpmL;
 
-		if(rpmAvgR >= sp-75 && rpmR <= sp+75 && rpmAvgL >= sp-75 && rpmL< sp+75)
-		{
-			counter++;
-		}
-		if(counter >= 3)
-		{
-			SensorValue(flywheelLED) = 1;
-		}
-		if(rpmAvgR < sp-150 || rpmR > sp+150 || rpmAvgL < sp-150 || rpmL > sp+150)
-		{
-			counter = 0;
-			SensorValue(flywheelLED) = 0;
-		}
+			lastRpmR4 = lastRpmR3;
+			lastRpmR3 = lastRpmR2;
+			lastRpmR2 = lastRpmR1;
+			lastRpmR1 = rpmR;
 
-/*		if(runFlywheel)
-		{
-			sp = 1180;
-		}
-		else
-		{
-			sp = 1480;
-		}*/
+			rpmAvgL = (rpmL + lastRpmL1 + lastRpmL2 + lastRpmL3 + lastRpmL4)/5;
+			rpmAvgR = (rpmR + lastRpmR1 + lastRpmR2 + lastRpmR3 + lastRpmR4)/5;
 
-		if(flywheelL.errorSum > 18000) // OLD: 20500
-		{
-			flywheelL.errorSum = 18000;
-		}
-		if(flywheelR.errorSum > 18000)
-		{
-			flywheelR.errorSum = 18000;
-		}
+				if(rpmAvgR >= sp-3 && rpmR <= sp+3 && rpmAvgL >= sp-3 && rpmL< sp+3)
+			{
+				counter++;
+			}
+			if(counter >= 3)
+			{
+				SensorValue(flywheelLED) = 1;
+			}
+			if(rpmAvgR < sp-20 || rpmR > sp+20 || rpmAvgL < sp-20 || rpmL > sp+20)
+			{
+				counter = 0;
+				SensorValue(flywheelLED) = 0;
+			}
 
-		if(rpmAvgR >= sp && rpmAvgL >= sp && !set)
-		{
-			//flywheelL.errorSum = 0;
-			//flywheelR.errorSum = 0;
-			set = true;
-		}
-		if(rpmAvgR <= sp-700 && rpmAvgL <= sp-700)
-		{
-			set = false;
-		}
+		/*	if(rpmAvgR >= sp-75 && rpmR <= sp+75 && rpmAvgL >= sp-75 && rpmL< sp+75)
+			{
+				counter++;
+			}
+			if(counter >= 3)
+			{
+				SensorValue(flywheelLED) = 1;
+			}
+			if(rpmAvgR < sp-150 || rpmR > sp+150 || rpmAvgL < sp-150 || rpmL > sp+150)
+			{
+				counter = 0;
+				SensorValue(flywheelLED) = 0;
+			}*/
 
-//		if(vexRT(Btn8D) == 1)
-//		{
-			outL = pidExecute(flywheelL, sp-rpmAvgL);
-			outR = pidExecute(flywheelR, sp-rpmAvgR);
-			//		}
-		if(vexRT(Btn8U) == 1)
-		{
-			pidReset(flywheelL);
-			pidReset(flywheelR);
-			outL = 0;
-			outR = 0;
-		}
+	/*		if(runFlywheel)
+			{
+				sp = 1180;
+			}
+			else
+			{
+				sp = 1480;
+			}*/
 
-		if(outL < 1)
-		{
-			outL = 1;
-		}
-		driveFlywheelLeft(outL);
+			if(flywheelL.errorSum > 18000) // OLD: 20500    //OLD BEST = 18000,
+			{
+				flywheelL.errorSum = 18000;
+			}
+			if(flywheelR.errorSum > 18000)
+			{
+				flywheelR.errorSum = 18000;
+			}
 
-		if(outR < 1)
-		{
-			outR = 1;
+			if(rpmAvgR >= sp && rpmAvgL >= sp && !set)
+			{
+				//flywheelL.errorSum = 0;
+				//flywheelR.errorSum = 0;
+				set = true;
+			}
+			if(rpmAvgR <= sp-700 && rpmAvgL <= sp-700)
+			{
+				set = false;
+			}
+
+				outL = pidExecute(flywheelL, sp-rpmAvgL);
+				outR = pidExecute(flywheelR, sp-rpmAvgR);
+
+			if(vexRT(Btn8U) == 1)
+			{
+				btn8DPressed = false;
+				pidReset(flywheelL);
+				pidReset(flywheelR);
+				outL = 0;
+				outR = 0;
+			}
+
+			if(vexRT(Btn8L) == 1)
+			{
+				sp -= 5;
+				wait1Msec(500);
+			}
+
+			if(vexRT(Btn8R) == 1)
+			{
+				sp += 5;
+				wait1Msec(500);
+			}
+
+
+			if(outL < 1)
+			{
+				outL = 1;
+			}
+			driveFlywheelLeft(outL);
+
+			if(outR < 1)
+			{
+				outR = 1;
+			}
+			driveFlywheelRight(outR);
 		}
-		driveFlywheelRight(outR);
 
   	//motors direct mapping from up/down joysticks
 
@@ -269,7 +448,7 @@ task usercontrol()
 
 		//ramp sets
 		int rampLeftDown = vexRT[Btn5D];
-		int rampLeftUp = vexRT[Btn6D];
+		int rampLeftUp = vexRT[Btn5U];
 		int rampRightDown = vexRT[Btn6D];
 		int rampRightUp = vexRT[Btn6U];
 
@@ -365,8 +544,8 @@ task usercontrol()
 	}
 
 
-//		datalogDataGroupStart();
-//		datalogAddValueWithTimeStamp(DATALOG_FLYWHEEL_LEFT, rpmL);
+	//	datalogDataGroupStart();
+	//	datalogAddValueWithTimeStamp(DATALOG_FLYWHEEL_LEFT, rpmL);
 //		datalogAddValueWithTimeStamp(DATALOG_FLYWHEEL_RIGHT, rpmR);
 
 	/*	datalogAddValueWithTimeStamp(0, flywheelLeft2);
@@ -376,7 +555,8 @@ task usercontrol()
 		datalogAddValueWithTimeStamp(0, flywheelRightEncoder);*/
 
 //		datalogDataGroupEnd();
-
+writeDebugStreamLine("%f", rpmL);
+		wait1Msec(20);
 
 
 
