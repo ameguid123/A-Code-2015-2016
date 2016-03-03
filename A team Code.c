@@ -229,7 +229,7 @@ float rpmAvgL = 0;
 float rpmAvgR = 0;
 float dT; //delta T in seconds
 float outL, outR;
-float sp = 1600;// used to be 1575
+float sp = 1575;// used to be 1575
 bool set = false;
 
 
@@ -351,14 +351,14 @@ task autonomous()
 			}
 			driveFlywheelRight(outR);
 
-			if(time1[T1] > 2000)
+			if(time1[T1] > 1800) //old 2000
 			{
 
 				motor[waterwheel] = 127;
 				motor[shooterConveyor] = 127;
 				firstBall = 1;
 			}
-			if(time1[T1] > 8000 && time1[T1] < 9000)
+			if(time1[T1] > 8500 && time1[T1] < 9500)//red side
 			{
 				int newSp = 1400;
 				outL = pidExecute(flywheelL, newSp-rpmAvgL);
@@ -372,7 +372,7 @@ task autonomous()
 				clearTimer(T2);
 				while(time1[T2] < 800)
 				{
-					driveL(-127)
+					driveL(-127);
 					driveR(-127);
 				}
 				while(time1[T2] < 1350)
@@ -386,8 +386,38 @@ task autonomous()
 					driveR(-127);
 				}
 				pidDrive(180);
-				gyroTurn(-25);
+				gyroTurn(-33);
 			}
+		/*		if(time1[T1] > 8500 && time1[T1] < 9500)//blue side
+			{
+				int newSp = 1400;
+				outL = pidExecute(flywheelL, newSp-rpmAvgL);
+				outR = pidExecute(flywheelR, newSp-rpmAvgR);
+				driveFlywheelLeft(outL);
+				driveFlywheelRight(outR);
+				gyroTurn(35);
+				pidDrive(1000);
+				//wait1Msec(10000);
+				gyroTurn(-75);
+				clearTimer(T2);
+				while(time1[T2] < 800)
+				{
+					driveL(-127);
+					driveR(-127);
+				}
+				while(time1[T2] < 1350)
+				{
+					driveL(127);
+					driveR(127);
+				}
+				while(time1[T2] < 2150)
+				{
+					driveL(-127);
+					driveR(-127);
+				}
+				pidDrive(180);
+				gyroTurn(33);
+			}*/
 
 			wait1Msec(20);
 
@@ -410,7 +440,7 @@ task usercontrol()
 	pidReset(flywheelL);
 	pidReset(flywheelR);
 	debugStreamClear;
-float sp = 1600; // old 1480
+float sp = 1520; // old 1480
 //INCREASE/DECREASE TARGET RPM (SP) WITH AN INCREMENT DECREMENTalea
 
 
@@ -519,7 +549,7 @@ float sp = 1600; // old 1480
 			rpmAvgL = (rpmL + lastRpmL1 + lastRpmL2 + lastRpmL3 + lastRpmL4)/5;
 			rpmAvgR = (rpmR + lastRpmR1 + lastRpmR2 + lastRpmR3 + lastRpmR4)/5;
 
-				if(rpmAvgR >= sp-30 && rpmR <= sp+30 && rpmAvgL >= sp-30 && rpmL< sp+30)
+				if(rpmAvgR >= sp-50 && rpmR <= sp+50 && rpmAvgL >= sp-50 && rpmL< sp+50)
 			{
 				counter++;
 			}
@@ -527,7 +557,7 @@ float sp = 1600; // old 1480
 			{
 				SensorValue(flywheelLED) = 1;
 			}
-			if(rpmAvgR < sp-70 || rpmR > sp+70 || rpmAvgL < sp-70 || rpmL > sp+0)
+			if(rpmAvgR < sp-150 || rpmR > sp+150 || rpmAvgL < sp-150 || rpmL > sp+150)
 			{
 				counter = 0;
 				SensorValue(flywheelLED) = 0;
