@@ -1,5 +1,6 @@
-//credit to JMMcKinneyWPI on Github, Jason McKinney
-
+/* CREDIT TO: Jason McKinney
+ * JMMcKinneyWPI on Github
+*/
 #ifndef PIDController_h
 #define PIDController_h
 
