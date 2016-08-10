@@ -1,6 +1,5 @@
- /* QCC2 PID Controller Library
-  * Jason McKinney
-  * 07/22/2015
+/* CREDIT TO: Jason McKinney
+ * JMMcKinneyWPI on Github
 */
 #ifndef PIDController_h
 #define PIDController_h
@@ -8,24 +7,23 @@
 typedef struct Controller
 {
 	float timer, dT; //For delta time of controller operation
-	float kP, kI, kD, epsilon; //Controller constants
+	float kP, kI, kD, epsilon, slewRate; //Controller constants
 	int error, lastError; //Error calculations
-	int pV, setPoint, lastPV; //sensor read (process Variable), loop set point and previous sensorVal
 	float errorSum; //Summation of error while in deadband
 	float output, lastOutput;
 }PID;
 
 //initialize the PID Controller with desired constants
 
-void pidInit(PID &pid, float kP, float kI, float kD, float epsilon)
+void pidInit(PID &pid, float kP, float kI, float kD, float epsilon, float slewRate)
 {
 	pid.timer = nPgmTime;
 	pid.kP = kP;
 	pid.kI = kI;
 	pid.kD = kD;
 	pid.epsilon = epsilon;
+	pid.slewRate = slewRate;
 	pid.error = 0;
-	pid.pV = 0;
 	pid.output = 0;
 	pid.lastOutput = 0;
 }
@@ -37,7 +35,14 @@ float pidFilteredOutput(PID &pid)
 	float filteredOut = pid.output;
 	if(pid.dT != 0)
 	{
+		if(abs(pid.output - pid.lastOutput)*pid.dT > pid.slewRate)
+		{
+			filteredOut = pid.lastOutput + pid.slewRate*pid.dT*(pid.output/abs(pid.output));
+		}
+		else
+		{
 			filteredOut =  pid.output;
+		}
 	}
 	if(abs(filteredOut) > 127)
 	{
@@ -47,19 +52,12 @@ float pidFilteredOutput(PID &pid)
 	return filteredOut;
 }
 
-void pidSet(PID &pid, int setPoint)
-{
-	pid.setPoint = setPoint;
-}
-
 //Execute the control loop and return its output
 
-float pidExecute(PID &pid, int sensorValue, int setPoint, float error)
+float pidExecute(PID &pid, float error)
 {
-	pidSet(pid, setPoint);
-	pid.lastPV = pid.pV;
-	pid.pV = sensorValue;
-	pid.error = pid.setPoint - pid.pV;
+	pid.lastError = pid.error;
+	pid.error = error;
 
 	pid.dT = (nPgmTime - pid.timer)/1000; //delta time in seconds
 	pid.timer = nPgmTime;
@@ -68,7 +66,7 @@ float pidExecute(PID &pid, int sensorValue, int setPoint, float error)
 	float rate;
 	if(abs(pid.dT) > 0)
 	{
-		rate = (pid.pV - pid.lastPV)/pid.dT;
+		rate = (pid.error - pid.lastError)/pid.dT;
 	}
 	else
 	{
@@ -82,5 +80,15 @@ float pidExecute(PID &pid, int sensorValue, int setPoint, float error)
 	pid.output = error * pid.kP + pid.errorSum * pid.kI + rate * pid.kD;
 
 	return pidFilteredOutput(pid);
+}
+
+//reset the PID controller
+
+void pidReset(PID &pid)
+{
+	pid.errorSum = 0;
+	pid.dT = 0;
+	pid.lastOutput = 0;
+	pid.lastError = 0;
 }
 #endif
